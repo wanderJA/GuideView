@@ -5,24 +5,34 @@ import android.support.design.widget.Snackbar
 import android.support.v7.app.AppCompatActivity
 import android.view.Menu
 import android.view.MenuItem
+import android.widget.TextView
 
 import kotlinx.android.synthetic.main.activity_main.*
 
 class MainActivity : AppCompatActivity() {
+
+    lateinit var guideView: GuideView
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_main)
         setSupportActionBar(toolbar)
 
+        guideView = GuideView(this)
+        guideView.targetView = fab
+        var textView = TextView(this)
+        textView.text = "kaishiba"
+        textView.textSize = 20f
+        guideView.customGuideView = textView
+        guideView.setOnClickListener { guideView.hide() }
+        guideView.show()
         fab.setOnClickListener { view ->
             Snackbar.make(view, "Replace with your own action", Snackbar.LENGTH_LONG)
-                    .setAction("Action", null).show()
+                    .setAction("Action", {
+                        guideView.show()
+                    }).show()
         }
 
-        var guideView = GuideView(this)
-        guideView.targetView = fab
-        guideView.show()
 
     }
 

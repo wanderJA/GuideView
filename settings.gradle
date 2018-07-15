@@ -1,1 +1,1 @@
-include ':app', ':guideView'
+include ':app'

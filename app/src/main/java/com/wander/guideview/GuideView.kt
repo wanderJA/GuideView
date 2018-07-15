@@ -55,7 +55,7 @@ class GuideView(var mContext: Context) : RelativeLayout(mContext) {
     /**
      * 自定义View
      */
-    private var customGuideView: View? = null
+    var customGuideView: View? = null
 
     var backgroundBitmap: Bitmap? = null
     var backgroundCanvas: Canvas? = null
@@ -84,7 +84,7 @@ class GuideView(var mContext: Context) : RelativeLayout(mContext) {
         Log.d(TAG, "show")
 //        if (hasShown())
 //            return
-
+        setBackgroundColor(Color.TRANSPARENT)
         ((mContext as Activity).window.decorView as FrameLayout).addView(this)
     }
 
@@ -121,7 +121,6 @@ class GuideView(var mContext: Context) : RelativeLayout(mContext) {
             }
             // 添加GuideView
             createGuideView()
-            invalidate()
 
         }
     }
