@@ -31,15 +31,13 @@ class GuideView(var mContext: Context) : RelativeLayout(mContext), ViewTreeObser
 
 
     init {
-        backGroundPaint.color = Color.GREEN
-        backGroundPaint.alpha = 120
         circlePaint.color = Color.RED
         circlePaint.xfermode = PorterDuffXfermode(PorterDuff.Mode.SRC_OUT)
     }
 
 
     fun show() {
-        Log.v(TAG, "show")
+        Log.d(TAG, "show")
         if (hasShown())
             return
         targetView?.viewTreeObserver?.addOnGlobalLayoutListener(this)
@@ -52,19 +50,14 @@ class GuideView(var mContext: Context) : RelativeLayout(mContext), ViewTreeObser
         super.onDraw(canvas)
 
         drawBackground(canvas)
-        canvas.drawRect(0F, 0f, width.toFloat(), height.toFloat(), backGroundPaint)
-        canvas.drawCircle((width / 2).toFloat(), (height / 2).toFloat(), 100F, circlePaint)
+//        canvas.drawRect(0F, 0f, width.toFloat(), height.toFloat(), backGroundPaint)
+//        canvas.drawCircle((width / 2).toFloat(), (height / 2).toFloat(), 100F, circlePaint)
 
     }
 
     override fun onLayout(changed: Boolean, l: Int, t: Int, r: Int, b: Int) {
         super.onLayout(changed, l, t, r, b)
         Log.d(TAG,"onLayout\twidth:${width}height:$height")
-    }
-
-    override fun onMeasure(widthMeasureSpec: Int, heightMeasureSpec: Int) {
-        super.onMeasure(widthMeasureSpec, heightMeasureSpec)
-        Log.d(TAG,"onMeasure$widthMeasureSpec")
     }
 
     private fun drawBackground(canvas: Canvas) {
