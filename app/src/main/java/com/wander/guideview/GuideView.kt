@@ -115,12 +115,14 @@ class GuideView(var mContext: Context) : RelativeLayout(mContext) {
             // 获取中心坐标
             center[0] = location[0] + targetView.width / 2
             center[1] = location[1] + targetView.height / 2
+            Log.d(TAG, "X:$center[0]\tY:$center[1]")
             // 获取targetView外切圆半径
             if (radius == 0) {
                 radius = getTargetViewRadius()
             }
             // 添加GuideView
-            createGuideView()
+            postDelayed({ createGuideView() }, 100)
+
 
         }
     }
@@ -189,8 +191,8 @@ class GuideView(var mContext: Context) : RelativeLayout(mContext) {
                     guideViewParams.setMargins(offsetX - width + left, top + offsetY, width - left - offsetX, -top - offsetY)
                 }
                 Direction.BOTTOM -> {
-                    this.gravity = Gravity.CENTER_HORIZONTAL
-                    guideViewParams.setMargins(offsetX, bottom + offsetY, -offsetX, -bottom - offsetY)
+//                    this.gravity = Gravity.CENTER_HORIZONTAL
+                    guideViewParams.setMargins(offsetX, bottom + offsetY, -offsetX, 0)
                 }
                 Direction.RIGHT -> guideViewParams.setMargins(right + offsetX, top + offsetY, -right - offsetX, -top - offsetY)
                 Direction.LEFT_TOP -> {

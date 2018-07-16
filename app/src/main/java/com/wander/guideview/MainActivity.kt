@@ -1,5 +1,6 @@
 package com.wander.guideview
 
+import android.graphics.Color
 import android.os.Bundle
 import android.support.design.widget.Snackbar
 import android.support.v7.app.AppCompatActivity
@@ -8,6 +9,7 @@ import android.view.MenuItem
 import android.widget.TextView
 
 import kotlinx.android.synthetic.main.activity_main.*
+import kotlinx.android.synthetic.main.content_main.*
 
 class MainActivity : AppCompatActivity() {
 
@@ -19,10 +21,11 @@ class MainActivity : AppCompatActivity() {
         setSupportActionBar(toolbar)
 
         guideView = GuideView(this)
-        guideView.targetView = fab
+        guideView.targetView = targetShow
         var textView = TextView(this)
         textView.text = "kaishiba"
         textView.textSize = 20f
+        textView.setTextColor(Color.BLACK)
         guideView.customGuideView = textView
         guideView.setOnClickListener { guideView.hide() }
         guideView.show()

@@ -121,7 +121,6 @@ class GuideView(var mContext: Context) : RelativeLayout(mContext) {
             }
             // 添加GuideView
             createGuideView()
-            invalidate()
 
         }
     }
@@ -191,7 +190,7 @@ class GuideView(var mContext: Context) : RelativeLayout(mContext) {
                 }
                 Direction.BOTTOM -> {
                     this.gravity = Gravity.CENTER_HORIZONTAL
-                    guideViewParams.setMargins(offsetX, bottom + offsetY, -offsetX, -bottom - offsetY)
+                    guideViewParams.setMargins(offsetX, bottom + offsetY, -offsetX, 0)
                 }
                 Direction.RIGHT -> guideViewParams.setMargins(right + offsetX, top + offsetY, -right - offsetX, -top - offsetY)
                 Direction.LEFT_TOP -> {
