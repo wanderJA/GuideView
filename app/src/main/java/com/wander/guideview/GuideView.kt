@@ -3,25 +3,23 @@ package com.wander.guideview
 import android.app.Activity
 import android.content.Context
 import android.graphics.*
-import android.os.Build
 import android.util.Log
-import android.view.Gravity
+import android.view.MotionEvent
 import android.view.View
-import android.view.ViewGroup
-import android.view.ViewTreeObserver
 import android.widget.FrameLayout
 import android.widget.RelativeLayout
+import android.widget.Toast
 
 /**
  * author wangdou
  * date 2018/7/15
  *
  */
-class GuideView(var mContext: Context) : RelativeLayout(mContext) {
+class GuideView(var mContext: Context) : FrameLayout(mContext) {
     private val TAG = javaClass.simpleName
-    var circlePaint: Paint = Paint(Paint.ANTI_ALIAS_FLAG)
-    var backGroundPaint = Paint(Paint.ANTI_ALIAS_FLAG)
-    var guideBackground = Color.parseColor("#cc222222")
+    private var circlePaint: Paint = Paint(Paint.ANTI_ALIAS_FLAG)
+    private var backGroundPaint = Paint(Paint.ANTI_ALIAS_FLAG)
+    private var guideBackground = Color.parseColor("#cc222222")
     /**
      * 需要显示提示信息的View
      */
@@ -57,18 +55,17 @@ class GuideView(var mContext: Context) : RelativeLayout(mContext) {
      */
     var customGuideView: View? = null
 
-    var backgroundBitmap: Bitmap? = null
-    var backgroundCanvas: Canvas? = null
+    private var backgroundBitmap: Bitmap? = null
+    private var backgroundCanvas: Canvas? = null
+    private var focusRect = Rect()
 
 
     init {
-        circlePaint.color = Color.RED
         circlePaint.xfermode = PorterDuffXfermode(PorterDuff.Mode.SRC_OUT)
     }
 
     fun hide() {
         Log.v(TAG, "hide")
-        this.removeAllViews()
         ((mContext as Activity).window.decorView as FrameLayout).removeView(this)
         restoreState()
     }
@@ -76,7 +73,6 @@ class GuideView(var mContext: Context) : RelativeLayout(mContext) {
     fun restoreState() {
         Log.v(TAG, "restoreState")
         isMeasured = false
-
     }
 
 
@@ -91,17 +87,11 @@ class GuideView(var mContext: Context) : RelativeLayout(mContext) {
 
     override fun onDraw(canvas: Canvas) {
         super.onDraw(canvas)
-        Log.d(TAG, "onDraw")
         drawBackground(canvas)
-//        canvas.drawRect(0F, 0f, width.toFloat(), height.toFloat(), backGroundPaint)
-//        canvas.drawCircle((width / 2).toFloat(), (height / 2).toFloat(), 100F, circlePaint)
 
     }
 
-    override fun onLayout(changed: Boolean, l: Int, t: Int, r: Int, b: Int) {
-        super.onLayout(changed, l, t, r, b)
-        Log.d(TAG, "onLayout\twidth:${width}height:$height")
-
+    private fun measureTarget() {
         if (isMeasured)
             return
         targetView?.let { targetView ->
@@ -115,20 +105,25 @@ class GuideView(var mContext: Context) : RelativeLayout(mContext) {
             // 获取中心坐标
             center[0] = location[0] + targetView.width / 2
             center[1] = location[1] + targetView.height / 2
-            Log.d(TAG, "X:$center[0]\tY:$center[1]")
+            Log.d(TAG, "X:${center[0]}\tY:${center[1]}")
             // 获取targetView外切圆半径
             if (radius == 0) {
                 radius = getTargetViewRadius()
             }
             // 添加GuideView
-            postDelayed({ createGuideView() }, 100)
+            createGuideView()
+        }
+    }
 
-
+    override fun onWindowFocusChanged(hasWindowFocus: Boolean) {
+        super.onWindowFocusChanged(hasWindowFocus)
+        Log.d(TAG, "onWindowFocusChanged")
+        if (hasWindowFocus) {
+            measureTarget()
         }
     }
 
     private fun drawBackground(canvas: Canvas) {
-        Log.d(TAG, "drawBackgroud")
         // 先绘制bitmap，再将bitmap绘制到屏幕
         backgroundBitmap = Bitmap.createBitmap(canvas.width, canvas.height, Bitmap.Config.ARGB_8888)
         backgroundCanvas = Canvas(backgroundBitmap)
@@ -142,13 +137,12 @@ class GuideView(var mContext: Context) : RelativeLayout(mContext) {
             backgroundCanvas?.drawRect(0f, 0f, bgBitmap.width.toFloat(), bgBitmap.height.toFloat(), backGroundPaint)
 
             // targetView 的透明圆形画笔
-            backgroundCanvas?.drawCircle((width / 2).toFloat(), (height / 2).toFloat(), 100F, circlePaint)
+            backgroundCanvas?.drawCircle((center[0]).toFloat(), (center[1]).toFloat(), radius.toFloat(), circlePaint)
 
             // 绘制到屏幕
             canvas.drawBitmap(bgBitmap, 0f, 0f, backGroundPaint)
             bgBitmap.recycle()
         }
-
     }
 
     /**
@@ -169,11 +163,10 @@ class GuideView(var mContext: Context) : RelativeLayout(mContext) {
         Log.v(TAG, "createGuideView")
 
         // Tips布局参数
-        var guideViewParams: RelativeLayout.LayoutParams = RelativeLayout.LayoutParams(RelativeLayout.LayoutParams.WRAP_CONTENT, RelativeLayout.LayoutParams.WRAP_CONTENT)
+        var guideViewParams: FrameLayout.LayoutParams = FrameLayout.LayoutParams(RelativeLayout.LayoutParams.WRAP_CONTENT, RelativeLayout.LayoutParams.WRAP_CONTENT)
         guideViewParams.setMargins(0, center[1] + radius + 10, 0, 0)
 
-        if (customGuideView != null) {
-
+        customGuideView?.let { customGuideView ->
             val width = this.width
             val height = this.height
 
@@ -181,30 +174,25 @@ class GuideView(var mContext: Context) : RelativeLayout(mContext) {
             val right = center[0] + radius
             val top = center[1] - radius
             val bottom = center[1] + radius
+            focusRect = Rect(left, top, right, bottom)
             when (direction) {
                 Direction.TOP -> {
-                    this.gravity = Gravity.BOTTOM or Gravity.CENTER_HORIZONTAL
                     guideViewParams.setMargins(offsetX, offsetY - height + top, -offsetX, height - top - offsetY)
                 }
                 Direction.LEFT -> {
-                    this.gravity = Gravity.RIGHT
                     guideViewParams.setMargins(offsetX - width + left, top + offsetY, width - left - offsetX, -top - offsetY)
                 }
                 Direction.BOTTOM -> {
-//                    this.gravity = Gravity.CENTER_HORIZONTAL
                     guideViewParams.setMargins(offsetX, bottom + offsetY, -offsetX, 0)
                 }
                 Direction.RIGHT -> guideViewParams.setMargins(right + offsetX, top + offsetY, -right - offsetX, -top - offsetY)
                 Direction.LEFT_TOP -> {
-                    this.gravity = Gravity.RIGHT or Gravity.BOTTOM
                     guideViewParams.setMargins(offsetX - width + left, offsetY - height + top, width - left - offsetX, height - top - offsetY)
                 }
                 Direction.LEFT_BOTTOM -> {
-                    this.gravity = Gravity.RIGHT
                     guideViewParams.setMargins(offsetX - width + left, bottom + offsetY, width - left - offsetX, -bottom - offsetY)
                 }
                 Direction.RIGHT_TOP -> {
-                    this.gravity = Gravity.BOTTOM
                     guideViewParams.setMargins(right + offsetX, offsetY - height + top, -right - offsetX, height - top - offsetY)
                 }
                 Direction.RIGHT_BOTTOM -> guideViewParams.setMargins(right + offsetX, bottom + offsetY, -right - offsetX, -top - offsetY)
@@ -213,6 +201,17 @@ class GuideView(var mContext: Context) : RelativeLayout(mContext) {
 
             addView(customGuideView, guideViewParams)
         }
+    }
+
+    override fun onTouchEvent(event: MotionEvent): Boolean {
+        when (event.action) {
+            MotionEvent.ACTION_UP -> {
+                if (focusRect.contains(event.x.toInt(), event.y.toInt())) {
+                    Log.d(TAG, "click focus")
+                }
+            }
+        }
+        return super.onTouchEvent(event)
     }
 
 
