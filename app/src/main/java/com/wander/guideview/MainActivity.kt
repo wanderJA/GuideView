@@ -25,6 +25,7 @@ class MainActivity : AppCompatActivity() {
         var textView = TextView(this)
         textView.text = "kaishiba"
         textView.textSize = 20f
+        textView.setBackgroundColor(Color.YELLOW)
         textView.setTextColor(Color.BLACK)
         guideView.customGuideView = textView
         guideView.setOnClickListener { guideView.hide() }

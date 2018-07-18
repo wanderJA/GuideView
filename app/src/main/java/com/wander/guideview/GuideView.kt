@@ -4,11 +4,11 @@ import android.app.Activity
 import android.content.Context
 import android.graphics.*
 import android.util.Log
+import android.view.Gravity
 import android.view.MotionEvent
 import android.view.View
 import android.widget.FrameLayout
 import android.widget.RelativeLayout
-import android.widget.Toast
 
 /**
  * author wangdou
@@ -37,13 +37,17 @@ class GuideView(var mContext: Context) : FrameLayout(mContext) {
      */
     private var location = IntArray(2)
     /**
+     * targetView rect
+     */
+    private var targetRect = Rect()
+    /**
      * targetView 的外切圆半径
      */
     private var radius: Int = 0
     /**
-     * 相对于targetView的位置.在target的那个方向
+     * 焦点相对于引导图，焦点图位于引导图的方位
      */
-    private var direction: Direction = Direction.BOTTOM
+    private var direction: Direction = Direction.LEFT_TOP
 
     /**
      * GuideView 偏移量
@@ -110,6 +114,10 @@ class GuideView(var mContext: Context) : FrameLayout(mContext) {
             if (radius == 0) {
                 radius = getTargetViewRadius()
             }
+            targetRect.left = location[0]
+            targetRect.top = location[1]
+            targetRect.right = location[0] + targetView.width
+            targetRect.bottom = location[1] + targetView.height
             // 添加GuideView
             createGuideView()
         }
@@ -167,17 +175,17 @@ class GuideView(var mContext: Context) : FrameLayout(mContext) {
         guideViewParams.setMargins(0, center[1] + radius + 10, 0, 0)
 
         customGuideView?.let { customGuideView ->
-            val width = this.width
-            val height = this.height
 
-            val left = center[0] - radius
-            val right = center[0] + radius
-            val top = center[1] - radius
-            val bottom = center[1] + radius
+            val left = targetRect.left
+            val right = targetRect.right
+            val top = targetRect.top
+            val bottom = targetRect.bottom
             focusRect = Rect(left, top, right, bottom)
+            //焦点view 相对引导图的位置
             when (direction) {
+
                 Direction.TOP -> {
-                    guideViewParams.setMargins(offsetX, offsetY - height + top, -offsetX, height - top - offsetY)
+                    guideViewParams.setMargins(left, offsetY + top, -offsetX, 0)
                 }
                 Direction.LEFT -> {
                     guideViewParams.setMargins(offsetX - width + left, top + offsetY, width - left - offsetX, -top - offsetY)
@@ -186,16 +194,46 @@ class GuideView(var mContext: Context) : FrameLayout(mContext) {
                     guideViewParams.setMargins(offsetX, bottom + offsetY, -offsetX, 0)
                 }
                 Direction.RIGHT -> guideViewParams.setMargins(right + offsetX, top + offsetY, -right - offsetX, -top - offsetY)
-                Direction.LEFT_TOP -> {
-                    guideViewParams.setMargins(offsetX - width + left, offsetY - height + top, width - left - offsetX, height - top - offsetY)
-                }
-                Direction.LEFT_BOTTOM -> {
-                    guideViewParams.setMargins(offsetX - width + left, bottom + offsetY, width - left - offsetX, -bottom - offsetY)
-                }
+            //焦点位于引导图的右上方
+//                ----------口
+//                |        |
+//                |  引导图 |
+//                ----------
+
                 Direction.RIGHT_TOP -> {
-                    guideViewParams.setMargins(right + offsetX, offsetY - height + top, -right - offsetX, height - top - offsetY)
+                    guideViewParams.gravity = Gravity.END
+                    guideViewParams.setMargins(0, offsetY + top, width - left + offsetX, 0)
                 }
-                Direction.RIGHT_BOTTOM -> guideViewParams.setMargins(right + offsetX, bottom + offsetY, -right - offsetX, -top - offsetY)
+            //焦点位于引导图的右下方
+//                ----------
+//                |        |
+//                |  引导图 |
+//                ----------口
+                Direction.RIGHT_BOTTOM -> {
+                    guideViewParams.gravity = Gravity.END or Gravity.BOTTOM
+                    guideViewParams.setMargins(0, 0, width - left + offsetX, height - bottom)
+
+                }
+            //焦点位于引导图的左上方
+//               口----------
+//                |        |
+//                |  引导图 |
+//                ----------
+                Direction.LEFT_TOP -> {
+                    guideViewParams.gravity = Gravity.START
+                    guideViewParams.setMargins(right + offsetX, offsetY + top, 0, 0)
+
+                }
+            //焦点位于引导图的左下方
+//                 ----------
+//                |         |
+//                |   引导图 |
+//               口----------
+                Direction.LEFT_BOTTOM -> {
+                    guideViewParams.gravity = Gravity.START or Gravity.BOTTOM
+                    guideViewParams.setMargins(right + offsetX, 0, 0, height - bottom)
+
+                }
             }
 
 
