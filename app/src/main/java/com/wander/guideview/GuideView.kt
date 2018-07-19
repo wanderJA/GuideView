@@ -3,23 +3,27 @@ package com.wander.guideview
 import android.app.Activity
 import android.content.Context
 import android.graphics.*
+import android.support.annotation.DrawableRes
+import android.text.TextUtils
 import android.util.Log
+import android.util.TypedValue
 import android.view.Gravity
+import android.view.KeyEvent
 import android.view.MotionEvent
 import android.view.View
 import android.widget.FrameLayout
-import android.widget.RelativeLayout
+import android.widget.ImageView
 
 /**
  * author wangdou
- * date 2018/7/15
+ * date 2018/7/19
  *
  */
 class GuideView(var mContext: Context) : FrameLayout(mContext) {
-    private val TAG = javaClass.simpleName
+    private val tag = javaClass.simpleName
     private var circlePaint: Paint = Paint(Paint.ANTI_ALIAS_FLAG)
     private var backGroundPaint = Paint(Paint.ANTI_ALIAS_FLAG)
-    private var guideBackground = Color.parseColor("#cc222222")
+    var guideBackground = Color.parseColor("#cc222222")
     /**
      * 需要显示提示信息的View
      */
@@ -47,45 +51,93 @@ class GuideView(var mContext: Context) : FrameLayout(mContext) {
     /**
      * 焦点相对于引导图，焦点图位于引导图的方位
      */
-    private var direction: Direction = Direction.LEFT_TOP
+    var direction: Direction = Direction.LEFT_TOP
 
     /**
      * GuideView 偏移量
      */
-    private var offsetX: Int = 0
-    private var offsetY: Int = 0
+    var offsetX: Int = 0
+    var offsetY: Int = 0
     /**
-     * 自定义View
+     * 自定义View 引导图
      */
     var customGuideView: View? = null
 
+    /**
+     * 是否使用展示一次
+     * 内部处理是否已经展示
+     * 老的业务逻辑请勿直接使用
+     */
+    var useShowOneTime = false
+    var preferenceKey: String? = null
+
     private var backgroundBitmap: Bitmap? = null
     private var backgroundCanvas: Canvas? = null
-    private var focusRect = Rect()
+    var mTargetClickListener: OnClickListener? = null
+    var mOnClickListener: OnClickListener? = null
+    var customHeight = LayoutParams.WRAP_CONTENT
+        set(value) {
+            field = dp2px(value).toInt()
+        }
+    var customWidth = LayoutParams.WRAP_CONTENT
+        set(value) {
+            field = dp2px(value).toInt()
+        }
 
+    var customImageDrawable: Int = 0
+        set(@DrawableRes value) {
+            field = value
+            customGuideView = ImageView(mContext)
+            (customGuideView as ImageView).let { imageView ->
+                imageView.setImageResource(field)
+                imageView.scaleType = ImageView.ScaleType.FIT_XY
+            }
+        }
+
+    /**
+     * dp 2 px
+     *
+     * @param dpVal
+     */
+    private fun dp2px(dpVal: Int): Float {
+        return TypedValue.applyDimension(TypedValue.COMPLEX_UNIT_DIP,
+                dpVal.toFloat(), mContext.resources.displayMetrics)
+    }
 
     init {
         circlePaint.xfermode = PorterDuffXfermode(PorterDuff.Mode.SRC_OUT)
     }
 
     fun hide() {
-        Log.v(TAG, "hide")
+        Log.v(tag, "hide")
         ((mContext as Activity).window.decorView as FrameLayout).removeView(this)
         restoreState()
     }
 
+    override fun onKeyDown(keyCode: Int, event: KeyEvent): Boolean {
+        if (keyCode == KeyEvent.KEYCODE_BACK) {
+            hide()
+            return true
+        }
+        return super.onKeyDown(keyCode, event)
+    }
+
     fun restoreState() {
-        Log.v(TAG, "restoreState")
         isMeasured = false
     }
 
 
     fun show() {
-        Log.d(TAG, "show")
-//        if (hasShown())
-//            return
+        Log.d(tag, "show")
+        if (hasShown())
+            return
         setBackgroundColor(Color.TRANSPARENT)
         ((mContext as Activity).window.decorView as FrameLayout).addView(this)
+        isFocusable = true
+        isFocusableInTouchMode = true
+        requestFocus()
+        var edit = mContext.getSharedPreferences(tag, Context.MODE_PRIVATE).edit()
+        edit.putBoolean(generateKey(), true).apply()
     }
 
 
@@ -109,7 +161,7 @@ class GuideView(var mContext: Context) : FrameLayout(mContext) {
             // 获取中心坐标
             center[0] = location[0] + targetView.width / 2
             center[1] = location[1] + targetView.height / 2
-            Log.d(TAG, "X:${center[0]}\tY:${center[1]}")
+            Log.d(tag, "X:${center[0]}\tY:${center[1]}")
             // 获取targetView外切圆半径
             if (radius == 0) {
                 radius = getTargetViewRadius()
@@ -125,7 +177,7 @@ class GuideView(var mContext: Context) : FrameLayout(mContext) {
 
     override fun onWindowFocusChanged(hasWindowFocus: Boolean) {
         super.onWindowFocusChanged(hasWindowFocus)
-        Log.d(TAG, "onWindowFocusChanged")
+        Log.d(tag, "onWindowFocusChanged")
         if (hasWindowFocus) {
             measureTarget()
         }
@@ -137,7 +189,7 @@ class GuideView(var mContext: Context) : FrameLayout(mContext) {
         backgroundCanvas = Canvas(backgroundBitmap)
 
         backgroundBitmap?.let { bgBitmap ->
-            Log.d(TAG, "draw")
+            Log.d(tag, "draw")
             // 背景画笔
             backGroundPaint.color = guideBackground
 
@@ -154,10 +206,9 @@ class GuideView(var mContext: Context) : FrameLayout(mContext) {
     }
 
     /**
-     * 定义GuideView相对于targetView的方位，共八种。不设置则默认在targetView下方
+     * 定义targetView相对于GuideView的方位，共八种。
      */
-    internal enum class Direction {
-        LEFT, TOP, RIGHT, BOTTOM,
+    enum class Direction {
         LEFT_TOP, LEFT_BOTTOM,
         RIGHT_TOP, RIGHT_BOTTOM
     }
@@ -168,10 +219,10 @@ class GuideView(var mContext: Context) : FrameLayout(mContext) {
      * 在屏幕窗口，添加蒙层，蒙层绘制总背景和透明圆形，圆形下边绘制说明文字
      */
     private fun createGuideView() {
-        Log.v(TAG, "createGuideView")
+        Log.v(tag, "createGuideView")
 
         // Tips布局参数
-        var guideViewParams: FrameLayout.LayoutParams = FrameLayout.LayoutParams(RelativeLayout.LayoutParams.WRAP_CONTENT, RelativeLayout.LayoutParams.WRAP_CONTENT)
+        var guideViewParams: FrameLayout.LayoutParams = FrameLayout.LayoutParams(customWidth, customHeight)
         guideViewParams.setMargins(0, center[1] + radius + 10, 0, 0)
 
         customGuideView?.let { customGuideView ->
@@ -180,58 +231,46 @@ class GuideView(var mContext: Context) : FrameLayout(mContext) {
             val right = targetRect.right
             val top = targetRect.top
             val bottom = targetRect.bottom
-            focusRect = Rect(left, top, right, bottom)
             //焦点view 相对引导图的位置
             when (direction) {
-
-                Direction.TOP -> {
-                    guideViewParams.setMargins(left, offsetY + top, -offsetX, 0)
-                }
-                Direction.LEFT -> {
-                    guideViewParams.setMargins(offsetX - width + left, top + offsetY, width - left - offsetX, -top - offsetY)
-                }
-                Direction.BOTTOM -> {
-                    guideViewParams.setMargins(offsetX, bottom + offsetY, -offsetX, 0)
-                }
-                Direction.RIGHT -> guideViewParams.setMargins(right + offsetX, top + offsetY, -right - offsetX, -top - offsetY)
             //焦点位于引导图的右上方
-//                ----------口
-//                |        |
+//                ----------
+//                |       口|
 //                |  引导图 |
 //                ----------
 
                 Direction.RIGHT_TOP -> {
                     guideViewParams.gravity = Gravity.END
-                    guideViewParams.setMargins(0, offsetY + top, width - left + offsetX, 0)
+                    guideViewParams.setMargins(0, offsetY + top, width - right + offsetX, 0)
                 }
             //焦点位于引导图的右下方
 //                ----------
 //                |        |
-//                |  引导图 |
-//                ----------口
+//                |引导图 口|
+//                ----------
                 Direction.RIGHT_BOTTOM -> {
                     guideViewParams.gravity = Gravity.END or Gravity.BOTTOM
-                    guideViewParams.setMargins(0, 0, width - left + offsetX, height - bottom)
+                    guideViewParams.setMargins(0, 0, width - right + offsetX, height - bottom + offsetY)
 
                 }
             //焦点位于引导图的左上方
-//               口----------
-//                |        |
+//                ----------
+//                |口       |
 //                |  引导图 |
 //                ----------
                 Direction.LEFT_TOP -> {
                     guideViewParams.gravity = Gravity.START
-                    guideViewParams.setMargins(right + offsetX, offsetY + top, 0, 0)
+                    guideViewParams.setMargins(left + offsetX, offsetY + top, 0, 0)
 
                 }
             //焦点位于引导图的左下方
 //                 ----------
 //                |         |
-//                |   引导图 |
-//               口----------
+//                |口 引导图 |
+//                ----------
                 Direction.LEFT_BOTTOM -> {
                     guideViewParams.gravity = Gravity.START or Gravity.BOTTOM
-                    guideViewParams.setMargins(right + offsetX, 0, 0, height - bottom)
+                    guideViewParams.setMargins(left + offsetX, 0, 0, height - bottom + offsetY)
 
                 }
             }
@@ -241,15 +280,17 @@ class GuideView(var mContext: Context) : FrameLayout(mContext) {
         }
     }
 
-    override fun onTouchEvent(event: MotionEvent): Boolean {
+    override fun dispatchTouchEvent(event: MotionEvent): Boolean {
         when (event.action) {
             MotionEvent.ACTION_UP -> {
-                if (focusRect.contains(event.x.toInt(), event.y.toInt())) {
-                    Log.d(TAG, "click focus")
+                if (targetRect.contains(event.x.toInt(), event.y.toInt())) {
+                    Log.d(tag, "click focus")
+                    mTargetClickListener?.onClick(targetView)
                 }
+                mOnClickListener?.onClick(this)
             }
         }
-        return super.onTouchEvent(event)
+        return true
     }
 
 
@@ -283,9 +324,23 @@ class GuideView(var mContext: Context) : FrameLayout(mContext) {
         return -1
     }
 
-
     private fun hasShown(): Boolean {
-        return if (targetView == null) true else mContext.getSharedPreferences(TAG, Context.MODE_PRIVATE).getBoolean(generateUniqueId(targetView!!), false)
+        if (!useShowOneTime) {
+            return false
+        }
+        return mContext.getSharedPreferences(tag, Context.MODE_PRIVATE).getBoolean(generateKey(), false)
+    }
+
+    private fun generateKey(): String {
+        preferenceKey?.let {
+            if (!TextUtils.isEmpty(it)) {
+                return it
+            }
+        }
+        targetView?.let {
+            return generateUniqueId(it)
+        }
+        throw IllegalArgumentException("缺少必要参数")
     }
 
     private fun generateUniqueId(v: View): String {
