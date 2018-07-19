@@ -123,6 +123,7 @@ class GuideView(var mContext: Context) : FrameLayout(mContext) {
     }
 
     fun restoreState() {
+        Log.v(tag, "restoreState")
         isMeasured = false
     }
 
