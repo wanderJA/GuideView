@@ -1,28 +1,29 @@
 package com.wander.guideview
 
-import android.app.Activity
 import android.content.Context
 import android.graphics.*
+import android.os.IBinder
 import android.support.annotation.DrawableRes
 import android.text.TextUtils
 import android.util.Log
 import android.util.TypedValue
-import android.view.Gravity
-import android.view.KeyEvent
-import android.view.MotionEvent
-import android.view.View
+import android.view.*
 import android.widget.FrameLayout
 import android.widget.ImageView
 
 /**
  * author wangdou
  * date 2018/7/19
- *
+ * 使用说明
+ * 焦点的重心默认在引导图的左上角
+ * 根据引导图中焦点的重心，焦点在引导图中的重心（也就是那个角）的偏移
+ * 即可正确定位
  */
 class GuideView(var mContext: Context) : FrameLayout(mContext) {
     private val tag = javaClass.simpleName
     private var circlePaint: Paint = Paint(Paint.ANTI_ALIAS_FLAG)
     private var backGroundPaint = Paint(Paint.ANTI_ALIAS_FLAG)
+    private var mWindowManager: WindowManager
     var guideBackground = Color.parseColor("#cc222222")
     /**
      * 需要显示提示信息的View
@@ -57,7 +58,13 @@ class GuideView(var mContext: Context) : FrameLayout(mContext) {
      * GuideView 偏移量
      */
     var offsetX: Int = 0
+        set(value) {
+            field = dp2px(value).toInt()
+        }
     var offsetY: Int = 0
+        set(value) {
+            field = dp2px(value).toInt()
+        }
     /**
      * 自定义View 引导图
      */
@@ -73,7 +80,13 @@ class GuideView(var mContext: Context) : FrameLayout(mContext) {
 
     private var backgroundBitmap: Bitmap? = null
     private var backgroundCanvas: Canvas? = null
+    /**
+     * 焦点区域点击
+     */
     var mTargetClickListener: OnClickListener? = null
+    /**
+     * 非焦点区域点击
+     */
     var mOnClickListener: OnClickListener? = null
     var customHeight = LayoutParams.WRAP_CONTENT
         set(value) {
@@ -106,12 +119,17 @@ class GuideView(var mContext: Context) : FrameLayout(mContext) {
 
     init {
         circlePaint.xfermode = PorterDuffXfermode(PorterDuff.Mode.SRC_OUT)
+        mWindowManager = context.getSystemService(Context.WINDOW_SERVICE) as WindowManager
     }
 
     fun hide() {
         Log.v(tag, "hide")
-        ((mContext as Activity).window.decorView as FrameLayout).removeView(this)
-        restoreState()
+        try {
+            mWindowManager.removeView(this)
+            restoreState()
+        } catch (e: Exception) {
+            e.printStackTrace()
+        }
     }
 
     override fun onKeyDown(keyCode: Int, event: KeyEvent): Boolean {
@@ -122,23 +140,79 @@ class GuideView(var mContext: Context) : FrameLayout(mContext) {
         return super.onKeyDown(keyCode, event)
     }
 
-    fun restoreState() {
-        Log.v(tag, "restoreState")
+    private fun restoreState() {
         isMeasured = false
     }
 
 
     fun show() {
-        Log.d(tag, "show")
-        if (hasShown())
-            return
-        setBackgroundColor(Color.TRANSPARENT)
-        ((mContext as Activity).window.decorView as FrameLayout).addView(this)
-        isFocusable = true
-        isFocusableInTouchMode = true
-        requestFocus()
-        var edit = mContext.getSharedPreferences(tag, Context.MODE_PRIVATE).edit()
-        edit.putBoolean(generateKey(), true).apply()
+        if (targetView == null) {
+            throw IllegalArgumentException("targetView is null")
+        }
+        try {
+            targetView?.let {
+                Log.d(tag, "show")
+                if (hasShown())
+                    return
+                setBackgroundColor(Color.TRANSPARENT)
+                mWindowManager.addView(this, createPopupLayoutParams(it.windowToken))
+                isFocusable = true
+                isFocusableInTouchMode = true
+                if (useShowOneTime) {
+                    mContext.getSharedPreferences(tag, Context.MODE_PRIVATE).edit().putBoolean(generateKey(), true).apply()
+                }
+            }
+        } catch (e: Exception) {
+            e.printStackTrace()
+        }
+    }
+
+
+    /**
+     *
+     * Generate the layout parameters for the popup window.
+     *
+     * @param token the window token used to bind the popup's window
+     *
+     * @return the layout parameters to pass to the window manager
+     *
+     * @hide
+     */
+    protected fun createPopupLayoutParams(token: IBinder?): WindowManager.LayoutParams {
+        val p = WindowManager.LayoutParams()
+
+        // These gravity settings put the view at the top left corner of the
+        // screen. The view is then positioned to the appropriate location by
+        // setting the x and y offsets to match the anchor's bottom-left
+        // corner.
+        p.gravity = Gravity.START or Gravity.TOP
+        p.flags = computeFlags(p.flags)
+        p.type = WindowManager.LayoutParams.TYPE_APPLICATION_PANEL
+        p.token = token
+
+//        if (mBackground != null) {
+//            p.format = mBackground.getOpacity()
+//        } else {
+        p.format = PixelFormat.TRANSLUCENT
+//        }
+
+        // Used for debugging.
+        p.title = "GuideView:" + Integer.toHexString(hashCode())
+
+        return p
+    }
+
+    private fun computeFlags(curFlags: Int): Int {
+        var curFlags = curFlags
+        curFlags = curFlags and (WindowManager.LayoutParams.FLAG_IGNORE_CHEEK_PRESSES or
+                WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE or
+                WindowManager.LayoutParams.FLAG_NOT_TOUCHABLE or
+                WindowManager.LayoutParams.FLAG_WATCH_OUTSIDE_TOUCH or
+                WindowManager.LayoutParams.FLAG_LAYOUT_NO_LIMITS or
+                WindowManager.LayoutParams.FLAG_ALT_FOCUSABLE_IM or
+                WindowManager.LayoutParams.FLAG_SPLIT_TOUCH).inv()
+        curFlags = curFlags or WindowManager.LayoutParams.FLAG_SPLIT_TOUCH
+        return curFlags
     }
 
 
@@ -223,55 +297,56 @@ class GuideView(var mContext: Context) : FrameLayout(mContext) {
         Log.v(tag, "createGuideView")
 
         // Tips布局参数
-        var guideViewParams: FrameLayout.LayoutParams = FrameLayout.LayoutParams(customWidth, customHeight)
+        val guideViewParams: FrameLayout.LayoutParams = FrameLayout.LayoutParams(customWidth, customHeight)
         guideViewParams.setMargins(0, center[1] + radius + 10, 0, 0)
 
         customGuideView?.let { customGuideView ->
 
-            val left = targetRect.left
-            val right = targetRect.right
-            val top = targetRect.top
-            val bottom = targetRect.bottom
+            val left = center[0]
+            val right = width - center[0]
+            val top = center[1]
+            val bottom = height - center[1]
+
             //焦点view 相对引导图的位置
             when (direction) {
-            //焦点位于引导图的右上方
-//                ----------
-//                |       口|
+            //焦点重心位于引导图的右上角
+//                ---------口
+//                |         |
 //                |  引导图 |
 //                ----------
 
                 Direction.RIGHT_TOP -> {
                     guideViewParams.gravity = Gravity.END
-                    guideViewParams.setMargins(0, offsetY + top, width - right + offsetX, 0)
+                    guideViewParams.setMargins(0, top - offsetY, right - offsetX, 0)
                 }
-            //焦点位于引导图的右下方
+            //焦点重心位于引导图的右下角
 //                ----------
 //                |        |
-//                |引导图 口|
-//                ----------
+//                |引导图   |
+//                ---------口
                 Direction.RIGHT_BOTTOM -> {
                     guideViewParams.gravity = Gravity.END or Gravity.BOTTOM
-                    guideViewParams.setMargins(0, 0, width - right + offsetX, height - bottom + offsetY)
+                    guideViewParams.setMargins(0, 0, right - offsetX, bottom - offsetY)
 
                 }
-            //焦点位于引导图的左上方
-//                ----------
-//                |口       |
+            //焦点重心位于引导图的左上角
+//                口---------
+//                |        |
 //                |  引导图 |
 //                ----------
                 Direction.LEFT_TOP -> {
                     guideViewParams.gravity = Gravity.START
-                    guideViewParams.setMargins(left + offsetX, offsetY + top, 0, 0)
+                    guideViewParams.setMargins(left - offsetX, top - offsetY, 0, 0)
 
                 }
-            //焦点位于引导图的左下方
+            //焦点重心位于引导图的左下角
 //                 ----------
 //                |         |
-//                |口 引导图 |
-//                ----------
+//                |   引导图 |
+//                口---------
                 Direction.LEFT_BOTTOM -> {
-                    guideViewParams.gravity = Gravity.START or Gravity.BOTTOM
-                    guideViewParams.setMargins(left + offsetX, 0, 0, height - bottom + offsetY)
+                    guideViewParams.gravity =  Gravity.BOTTOM
+                    guideViewParams.setMargins(left - offsetX, 0, 0, bottom - offsetY)
 
                 }
             }
@@ -287,8 +362,10 @@ class GuideView(var mContext: Context) : FrameLayout(mContext) {
                 if (targetRect.contains(event.x.toInt(), event.y.toInt())) {
                     Log.d(tag, "click focus")
                     mTargetClickListener?.onClick(targetView)
+                } else {
+                    mOnClickListener?.onClick(this)
                 }
-                mOnClickListener?.onClick(this)
+                hide()
             }
         }
         return true
