@@ -9,14 +9,27 @@
     tools:showIn="@layout/activity_main">
 
     <TextView
+        android:id="@+id/targetShow"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
         android:text="Hello World!"
-        android:id="@+id/targetShow"
         app:layout_constraintBottom_toBottomOf="parent"
         app:layout_constraintLeft_toLeftOf="parent"
         app:layout_constraintRight_toRightOf="parent"
         app:layout_constraintTop_toTopOf="parent" />
+
+
+    <TextView
+        android:id="@+id/itemBottom"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_marginBottom="40dp"
+        android:layout_marginLeft="80dp"
+        android:layout_marginStart="80dp"
+        android:padding="5dp"
+        android:text="12334"
+        app:layout_constraintBottom_toBottomOf="parent"
+        app:layout_constraintLeft_toLeftOf="parent" />
 
 
 </android.support.constraint.ConstraintLayout>

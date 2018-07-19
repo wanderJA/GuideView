@@ -6,7 +6,9 @@ import android.support.design.widget.Snackbar
 import android.support.v7.app.AppCompatActivity
 import android.view.Menu
 import android.view.MenuItem
+import android.view.View
 import android.widget.TextView
+import android.widget.Toast
 
 import kotlinx.android.synthetic.main.activity_main.*
 import kotlinx.android.synthetic.main.content_main.*
@@ -28,14 +30,25 @@ class MainActivity : AppCompatActivity() {
         textView.setBackgroundColor(Color.YELLOW)
         textView.setTextColor(Color.BLACK)
         guideView.customGuideView = textView
-        guideView.setOnClickListener { guideView.hide() }
-        guideView.show()
+//        guideView.show()
         fab.setOnClickListener { view ->
             Snackbar.make(view, "Replace with your own action", Snackbar.LENGTH_LONG)
-                    .setAction("Action", {
+                    .setAction("Action") {
                         guideView.show()
-                    }).show()
+                    }.show()
         }
+
+        GuideView(this).apply {
+            mTargetClickListener = View.OnClickListener { Toast.makeText(this@MainActivity, "click", Toast.LENGTH_SHORT).show() }
+            customImageDrawable = R.drawable.guide_vertical
+            customWidth = 250
+            customHeight = 400
+            targetView = itemBottom
+            direction = GuideView.Direction.LEFT_BOTTOM
+            offsetX = -10
+            offsetY = -70
+            useShowOneTime = true
+        }.show()
 
 
     }
