@@ -18,13 +18,15 @@ import android.widget.ImageView
  * 焦点的重心默认在引导图的左上角
  * 根据引导图中焦点的重心，焦点在引导图中的重心（也就是那个角）的偏移
  * 即可正确定位
+ * 1、在dialog中使用需将dialog设置为全屏--dialog启动会设置window的layoutParams
  */
 class GuideView(var mContext: Context) : FrameLayout(mContext) {
     private val tag = javaClass.simpleName
     private var circlePaint: Paint = Paint(Paint.ANTI_ALIAS_FLAG)
     private var backGroundPaint = Paint(Paint.ANTI_ALIAS_FLAG)
     private var mWindowManager: WindowManager
-    var guideBackground = Color.parseColor("#cc222222")
+    var guideBackground = Color.parseColor("#4c000000")
+
     /**
      * 需要显示提示信息的View
      */
@@ -154,7 +156,7 @@ class GuideView(var mContext: Context) : FrameLayout(mContext) {
                 Log.d(tag, "show")
                 if (hasShown())
                     return
-                setBackgroundColor(Color.TRANSPARENT)
+                setBackgroundColor(guideBackground)
                 mWindowManager.addView(this, createPopupLayoutParams(it.windowToken))
                 isFocusable = true
                 isFocusableInTouchMode = true
@@ -203,22 +205,28 @@ class GuideView(var mContext: Context) : FrameLayout(mContext) {
     }
 
     private fun computeFlags(curFlags: Int): Int {
-        var curFlags = curFlags
-        curFlags = curFlags and (WindowManager.LayoutParams.FLAG_IGNORE_CHEEK_PRESSES or
+        var flags = curFlags and (WindowManager.LayoutParams.FLAG_IGNORE_CHEEK_PRESSES or
                 WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE or
                 WindowManager.LayoutParams.FLAG_NOT_TOUCHABLE or
                 WindowManager.LayoutParams.FLAG_WATCH_OUTSIDE_TOUCH or
                 WindowManager.LayoutParams.FLAG_LAYOUT_NO_LIMITS or
                 WindowManager.LayoutParams.FLAG_ALT_FOCUSABLE_IM or
                 WindowManager.LayoutParams.FLAG_SPLIT_TOUCH).inv()
-        curFlags = curFlags or WindowManager.LayoutParams.FLAG_SPLIT_TOUCH
-        return curFlags
+        flags = flags or WindowManager.LayoutParams.FLAG_SPLIT_TOUCH
+        return flags
     }
 
 
+    /**
+     * 自己画焦点的位置
+     */
+    private var customDraw = false
+
     override fun onDraw(canvas: Canvas) {
         super.onDraw(canvas)
-        drawBackground(canvas)
+        if (customDraw) {
+            drawBackground(canvas)
+        }
 
     }
 
@@ -232,7 +240,7 @@ class GuideView(var mContext: Context) : FrameLayout(mContext) {
 
             // 获取targetView的中心坐标
             // 获取右上角坐标
-            targetView.getLocationInWindow(location)
+            targetView.getLocationOnScreen(location)
             // 获取中心坐标
             center[0] = location[0] + targetView.width / 2
             center[1] = location[1] + targetView.height / 2
@@ -260,6 +268,7 @@ class GuideView(var mContext: Context) : FrameLayout(mContext) {
 
     private fun drawBackground(canvas: Canvas) {
         // 先绘制bitmap，再将bitmap绘制到屏幕
+        setBackgroundColor(Color.TRANSPARENT)
         backgroundBitmap = Bitmap.createBitmap(canvas.width, canvas.height, Bitmap.Config.ARGB_8888)
         backgroundCanvas = Canvas(backgroundBitmap)
 
@@ -345,7 +354,7 @@ class GuideView(var mContext: Context) : FrameLayout(mContext) {
 //                |   引导图 |
 //                口---------
                 Direction.LEFT_BOTTOM -> {
-                    guideViewParams.gravity =  Gravity.BOTTOM
+                    guideViewParams.gravity = Gravity.BOTTOM
                     guideViewParams.setMargins(left - offsetX, 0, 0, bottom - offsetY)
 
                 }
