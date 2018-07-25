@@ -128,6 +128,7 @@ class GuideView(var mContext: Context) : FrameLayout(mContext) {
         Log.v(tag, "hide")
         try {
             mWindowManager.removeView(this)
+            removeAllViews()
             restoreState()
         } catch (e: Exception) {
             e.printStackTrace()
@@ -220,7 +221,7 @@ class GuideView(var mContext: Context) : FrameLayout(mContext) {
     /**
      * 自己画焦点的位置
      */
-    private var customDraw = false
+    private var customDraw = true
 
     override fun onDraw(canvas: Canvas) {
         super.onDraw(canvas)
