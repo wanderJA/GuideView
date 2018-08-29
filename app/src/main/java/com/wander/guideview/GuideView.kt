@@ -25,7 +25,7 @@ class GuideView(var mContext: Context) : FrameLayout(mContext) {
     private var circlePaint: Paint = Paint(Paint.ANTI_ALIAS_FLAG)
     private var backGroundPaint = Paint(Paint.ANTI_ALIAS_FLAG)
     private var mWindowManager: WindowManager
-    var guideBackground = Color.parseColor("#4c000000")
+    var guideBackground = Color.parseColor("#b0000000")
 
     /**
      * 需要显示提示信息的View
@@ -237,10 +237,12 @@ class GuideView(var mContext: Context) : FrameLayout(mContext) {
         targetView?.let { targetView ->
             if (targetView.height > 0 && targetView.width > 0) {
                 isMeasured = true
+            } else {
+                return
             }
 
             // 获取targetView的中心坐标
-            // 获取右上角坐标
+            // 获取左上角坐标
             targetView.getLocationOnScreen(location)
             // 获取中心坐标
             center[0] = location[0] + targetView.width / 2
@@ -319,7 +321,7 @@ class GuideView(var mContext: Context) : FrameLayout(mContext) {
 
             //焦点view 相对引导图的位置
             when (direction) {
-            //焦点重心位于引导图的右上角
+                //焦点重心位于引导图的右上角
 //                ---------口
 //                |         |
 //                |  引导图 |
@@ -329,7 +331,7 @@ class GuideView(var mContext: Context) : FrameLayout(mContext) {
                     guideViewParams.gravity = Gravity.END
                     guideViewParams.setMargins(0, top - offsetY, right - offsetX, 0)
                 }
-            //焦点重心位于引导图的右下角
+                //焦点重心位于引导图的右下角
 //                ----------
 //                |        |
 //                |引导图   |
@@ -339,7 +341,7 @@ class GuideView(var mContext: Context) : FrameLayout(mContext) {
                     guideViewParams.setMargins(0, 0, right - offsetX, bottom - offsetY)
 
                 }
-            //焦点重心位于引导图的左上角
+                //焦点重心位于引导图的左上角
 //                口---------
 //                |        |
 //                |  引导图 |
@@ -349,7 +351,7 @@ class GuideView(var mContext: Context) : FrameLayout(mContext) {
                     guideViewParams.setMargins(left - offsetX, top - offsetY, 0, 0)
 
                 }
-            //焦点重心位于引导图的左下角
+                //焦点重心位于引导图的左下角
 //                 ----------
 //                |         |
 //                |   引导图 |
@@ -361,8 +363,14 @@ class GuideView(var mContext: Context) : FrameLayout(mContext) {
                 }
             }
 
+            try {
+                if (customGuideView.parent != null) {
+                    (customGuideView.parent as ViewGroup).removeView(customGuideView)
+                }
 
-            addView(customGuideView, guideViewParams)
+                addView(customGuideView, guideViewParams)
+            } catch (e: Exception) {
+            }
         }
     }
 
